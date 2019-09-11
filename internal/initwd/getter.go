@@ -3,6 +3,7 @@ package initwd
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -60,6 +61,7 @@ var getterHTTPClient = cleanhttp.DefaultClient()
 var getterHTTPGetter = &getter.HttpGetter{
 	Client: getterHTTPClient,
 	Netrc:  true,
+	Header: http.Header{},
 }
 
 // A reusingGetter is a helper for the module installer that remembers
@@ -81,7 +83,7 @@ type reusingGetter map[string]string
 // end-user-actionable error messages. At this time we do not have any
 // reasonable way to improve these error messages at this layer because
 // the underlying errors are not separately recognizable.
-func (g reusingGetter) getWithGoGetter(instPath, addr string) (string, error) {
+func (g reusingGetter) getWithGoGetter(instPath, addr, token string) (string, error) {
 	packageAddr, subDir := splitAddrSubdir(addr)
 
 	log.Printf("[DEBUG] will download %q to %s", packageAddr, instPath)
@@ -116,6 +118,16 @@ func (g reusingGetter) getWithGoGetter(instPath, addr string) (string, error) {
 			return "", fmt.Errorf("failed to copy from %s to %s: %s", prevDir, instPath, err)
 		}
 	} else {
+		if header := getterHTTPGetter.Header; header != nil && token != "" {
+			if old := header.Get("Authorization"); old != "" {
+				defer header.Set("Authorization", old)
+			} else {
+				defer header.Del("Authorization")
+			}
+
+			header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+		}
+
 		log.Printf("[TRACE] fetching %q to %q", realAddr, instPath)
 		client := getter.Client{
 			Src: realAddr,

@@ -418,7 +418,12 @@ func (i *ModuleInstaller) installRegistryModule(req *earlyconfig.ModuleRequest, 
 
 	log.Printf("[TRACE] ModuleInstaller: %s %s %s is available at %q", key, addr, latestMatch, dlAddr)
 
-	modDir, err := getter.getWithGoGetter(instPath, dlAddr)
+	var token string
+	if creds := reg.Credentials(hostname); creds != nil {
+		token = creds.Token()
+	}
+
+	modDir, err := getter.getWithGoGetter(instPath, dlAddr, token)
 	if err != nil {
 		// Errors returned by go-getter have very inconsistent quality as
 		// end-user error messages, but for now we're accepting that because
@@ -489,7 +494,7 @@ func (i *ModuleInstaller) installGoGetterModule(req *earlyconfig.ModuleRequest, 
 		return nil, diags
 	}
 
-	modDir, err := getter.getWithGoGetter(instPath, req.SourceAddr)
+	modDir, err := getter.getWithGoGetter(instPath, req.SourceAddr, "")
 	if err != nil {
 		if _, ok := err.(*MaybeRelativePathErr); ok {
 			log.Printf(

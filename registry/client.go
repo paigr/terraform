@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform/registry/regsrc"
 	"github.com/hashicorp/terraform/registry/response"
 	"github.com/hashicorp/terraform/svchost"
+	"github.com/hashicorp/terraform/svchost/auth"
 	"github.com/hashicorp/terraform/svchost/disco"
 	"github.com/hashicorp/terraform/version"
 )
@@ -130,14 +131,18 @@ func (c *Client) ModuleVersions(module *regsrc.Module) (*response.ModuleVersions
 	return &versions, nil
 }
 
-func (c *Client) addRequestCreds(host svchost.Hostname, req *http.Request) {
+func (c *Client) Credentials(host svchost.Hostname) auth.HostCredentials {
 	creds, err := c.services.CredentialsForHost(host)
 	if err != nil {
 		log.Printf("[WARN] Failed to get credentials for %s: %s (ignoring)", host, err)
-		return
+		return nil
 	}
 
-	if creds != nil {
+	return creds
+}
+
+func (c *Client) addRequestCreds(host svchost.Hostname, req *http.Request) {
+	if creds := c.Credentials(host); creds != nil {
 		creds.PrepareRequest(req)
 	}
 }
